@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Searchbar } from 'components/Searchbar/Searchbar';
 import { Container } from 'components/App/App.styled';
 import { ImageGallery } from 'components/ImageGallery/ImageGallery';
@@ -22,10 +22,8 @@ export const App = () => {
     setLoading(true);
   };
 
-  const isFirstRender = useRef(true);
-
   useEffect(() => {
-    if (page === 1) {
+    if (query === '') {
       return;
     }
 
@@ -36,30 +34,20 @@ export const App = () => {
       return images.data.hits;
     };
 
+    if (page === 1) {
+      fetchImages().then(images => {
+        setImages(images);
+        setLoading(false);
+      });
+
+      return;
+    }
+
     fetchImages().then(newImages => {
       setImages(images => [...images, ...newImages]);
       setLoading(false);
     });
   }, [page, query]);
-
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-
-    const fetchImages = async () => {
-      const images = await axios.get(
-        `?key=25354939-b34ef3161dfabf3cda0874337&q=${query}&image_type=photo&orientation=horizontal&per_page=15&page=1`
-      );
-      return images.data.hits;
-    };
-
-    fetchImages().then(images => {
-      setImages(images);
-      setLoading(false);
-    });
-  }, [query]);
 
   const loadMore = () => {
     setPage(page => page + 1);
