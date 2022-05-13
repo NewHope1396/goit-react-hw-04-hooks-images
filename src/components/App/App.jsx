@@ -1,89 +1,89 @@
-import axios from "axios"
-import React, { Component } from "react"
-import { Searchbar } from 'components/Searchbar/Searchbar'
-import { Container } from 'components/App/App.styled'
-import { ImageGallery } from 'components/ImageGallery/ImageGallery'
-import { Button } from 'components/Button/Button'
-import { MySpiner } from 'components/MySpiner/MySpiner'
-import { Modal } from 'components/Modal/Modal'
+import axios from 'axios';
+import { useState, useEffect, useRef } from 'react';
+import { Searchbar } from 'components/Searchbar/Searchbar';
+import { Container } from 'components/App/App.styled';
+import { ImageGallery } from 'components/ImageGallery/ImageGallery';
+import { Button } from 'components/Button/Button';
+import { MySpiner } from 'components/MySpiner/MySpiner';
+import { Modal } from 'components/Modal/Modal';
 
+axios.defaults.baseURL = 'https://pixabay.com/api/';
 
-axios.defaults.baseURL = "https://pixabay.com/api/"
+export const App = () => {
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
-export class App extends Component {
+  const onSubmit = keyWord => {
+    setPage(1);
+    setQuery(keyWord);
+    setLoading(true);
+  };
 
-  state = {
-    images: [],
-    currentPage: 1,
-    keyWord: '',
-    loading: false,
-    selectedImage: null
-  }
+  const isFirstRender = useRef(true);
 
-  fetchImages = async () => {
-    const { keyWord, currentPage } = this.state;
-    const images = await axios.get(`?key=25354939-b34ef3161dfabf3cda0874337&q=${keyWord}&image_type=photo&orientation=horizontal&per_page=15&page=${currentPage}`);
-    return images.data.hits;
-  }
+  useEffect(() => {
+    if (page === 1) {
+      return;
+    }
 
-  onSubmit = (keyWord) => {
-    this.setState({
-      currentPage: 1,
-      keyWord: keyWord,
-      loading: true,
-    })
-  }
-
-  componentDidUpdate (_, prevState) {
-    if (prevState.keyWord !== this.state.keyWord) {
-      this.fetchImages().then(
-        images => this.setState({images, loading: false})
+    const fetchImages = async () => {
+      const images = await axios.get(
+        `?key=25354939-b34ef3161dfabf3cda0874337&q=${query}&image_type=photo&orientation=horizontal&per_page=15&page=${page}`
       );
-      return
+      return images.data.hits;
+    };
+
+    fetchImages().then(newImages => {
+      setImages(images => [...images, ...newImages]);
+      setLoading(false);
+    });
+  }, [page, query]);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
     }
 
-    if (this.state.currentPage !== prevState.currentPage && this.state.currentPage !== 1) {
-      this.fetchImages().then(
-        newImages =>
-          this.setState((prevState) => {
-          return {
-            images: [...prevState.images, ...newImages],
-            loading: false
-          }})
-      )
-    }
-  }
+    const fetchImages = async () => {
+      const images = await axios.get(
+        `?key=25354939-b34ef3161dfabf3cda0874337&q=${query}&image_type=photo&orientation=horizontal&per_page=15&page=1`
+      );
+      return images.data.hits;
+    };
 
-  loadMore = () => {
-    this.setState(prevState => ({
-      currentPage: prevState.currentPage + 1,
-      loading: true,
-    }))
-  }
+    fetchImages().then(images => {
+      setImages(images);
+      setLoading(false);
+    });
+  }, [query]);
 
-  closeModal = () => {
-  this.setState({
-      selectedImage: null
-    })
-  }
+  const loadMore = () => {
+    setPage(page => page + 1);
+    setLoading(true);
+  };
 
-  selectImage = (image) => {
-    this.setState(() => {
-      return { selectedImage: image }
-    })
-  }
+  const closeModal = () => {
+    setSelectedImage(null);
+  };
 
-  render() {
-
-    const { loading, images, selectedImage } = this.state;
-
-    return (
-      <Container>
-        <Searchbar onSearchSubmit={this.onSubmit}></Searchbar>
-        {!loading && <ImageGallery images={images} onImageClick={this.selectImage}></ImageGallery>}
-        {loading && <MySpiner></MySpiner>}
-        {(images.length !== 0) && !loading && <Button loadMore={this.loadMore}></Button>} 
-        {selectedImage && <Modal image={selectedImage} closeModal={this.closeModal}></Modal>}
-      </Container>
-  )}
+  return (
+    <Container>
+      <Searchbar onSearchSubmit={onSubmit}></Searchbar>
+      {!loading && (
+        <ImageGallery
+          images={images}
+          onImageClick={setSelectedImage}
+        ></ImageGallery>
+      )}
+      {loading && <MySpiner></MySpiner>}
+      {images.length !== 0 && !loading && <Button loadMore={loadMore}></Button>}
+      {selectedImage && (
+        <Modal image={selectedImage} closeModal={closeModal}></Modal>
+      )}
+    </Container>
+  );
 };
